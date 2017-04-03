@@ -112,7 +112,7 @@ class BatchPolopt(RLAlgorithm):
     def shutdown_worker(self):
         self.sampler.shutdown_worker()
 
-    def train(self):
+    def train(self, async=False):
         self.start_worker()
         self.init_opt()
         for itr in range(self.current_itr, self.n_itr):
@@ -135,6 +135,11 @@ class BatchPolopt(RLAlgorithm):
                     if self.pause_for_plot:
                         input("Plotting evaluation run: Press Enter to "
                                   "continue...")
+                # useful for early stopping
+                if async:
+                    should_stop = yield itr, params
+                    if should_stop:
+                        break
 
         self.shutdown_worker()
 
