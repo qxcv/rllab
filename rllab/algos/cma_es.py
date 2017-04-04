@@ -61,7 +61,7 @@ class CMAES(RLAlgorithm, Serializable):
         self.n_itr = n_itr
         self.batch_size = batch_size
 
-    def train(self):
+    def train(self, async=False):
 
         cur_std = self.sigma0
         cur_mean = self.policy.get_param_values()
@@ -147,6 +147,10 @@ class CMAES(RLAlgorithm, Serializable):
             if self.plot:
                 plotter.update_plot(self.policy, self.max_path_length)
             logger.pop_prefix()
+            if async:
+                should_stop = yield itr, None
+                if should_stop:
+                    break
             # Update iteration.
             itr += 1
 

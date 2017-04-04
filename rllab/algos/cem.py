@@ -73,7 +73,7 @@ class CEM(RLAlgorithm, Serializable):
         self.max_path_length = max_path_length
         self.n_itr = n_itr
 
-    def train(self):
+    def train(self, async=False):
         parallel_sampler.populate_task(self.env, self.policy)
         if self.plot:
             plotter.init_plot(self.env, self.policy)
@@ -144,4 +144,8 @@ class CEM(RLAlgorithm, Serializable):
             logger.pop_prefix()
             if self.plot:
                 plotter.update_plot(self.policy, self.max_path_length)
+            if async:
+                should_stop = yield itr, None
+                if should_stop:
+                    break
         parallel_sampler.terminate_task()
