@@ -405,12 +405,12 @@ class DenseLayer(Layer):
 
 
 class BaseConvLayer(Layer):
-    def __init__(self, incoming, num_filters, filter_size, stride=1, pad="VALID",
-                 untie_biases=False,
-                 W=XavierUniformInitializer(), b=tf.zeros_initializer(),
-                 nonlinearity=tf.nn.relu, n=None, **kwargs):
+    def __init__(self, incoming, num_filters, filter_size, stride=1,
+                 pad="VALID", untie_biases=False, W=XavierUniformInitializer(),
+                 b=tf.zeros_initializer(), nonlinearity=tf.nn.relu, n=None,
+                 **kwargs):
         """
-        Input is assumed to be of shape batch*height*width*channels
+        Input is assumed to be of shape batch*<intervening dimensions>*channels
         """
         super(BaseConvLayer, self).__init__(incoming, **kwargs)
         if nonlinearity is None:
@@ -465,9 +465,7 @@ class BaseConvLayer(Layer):
         elif self.pad == 'VALID':
             pad = (0,) * self.n
         else:
-            import ipdb;
-            ipdb.set_trace()
-            raise NotImplementedError
+            raise NotImplementedError()
 
         # pad = self.pad if isinstance(self.pad, tuple) else (self.pad,) * self.n
         batchsize = input_shape[0]
@@ -513,17 +511,43 @@ class BaseConvLayer(Layer):
 
 class Conv2DLayer(BaseConvLayer):
     def __init__(self, incoming, num_filters, filter_size, stride=(1, 1),
-                 pad="VALID", untie_biases=False,
-                 W=XavierUniformInitializer(), b=tf.zeros_initializer(),
-                 nonlinearity=tf.nn.relu,
+                 pad="VALID", untie_biases=False, W=XavierUniformInitializer(),
+                 b=tf.zeros_initializer(), nonlinearity=tf.nn.relu,
                  convolution=tf.nn.conv2d, **kwargs):
-        super(Conv2DLayer, self).__init__(incoming=incoming, num_filters=num_filters, filter_size=filter_size,
-                                          stride=stride, pad=pad, untie_biases=untie_biases, W=W, b=b,
-                                          nonlinearity=nonlinearity, n=2, **kwargs)
+        super(Conv2DLayer, self).__init__(incoming=incoming,
+                                          num_filters=num_filters,
+                                          filter_size=filter_size,
+                                          stride=stride, pad=pad,
+                                          untie_biases=untie_biases, W=W, b=b,
+                                          nonlinearity=nonlinearity, n=2,
+                                          **kwargs)
         self.convolution = convolution
 
     def convolve(self, input, **kwargs):
-        conved = self.convolution(input, self.W, strides=(1,) + self.stride + (1,), padding=self.pad)
+        conved = self.convolution(input, self.W,
+                                  strides=(1,) + self.stride + (1,),
+                                  padding=self.pad)
+        return conved
+
+
+class Conv1DLayer(BaseConvLayer):
+    def __init__(self, incoming, num_filters, filter_size, stride=1,
+                 pad="VALID", untie_biases=False, W=XavierUniformInitializer(),
+                 b=tf.zeros_initializer(), nonlinearity=tf.nn.relu,
+                 convolution=tf.nn.conv1d, **kwargs):
+        super(Conv1DLayer, self).__init__(incoming=incoming,
+                                          num_filters=num_filters,
+                                          filter_size=filter_size,
+                                          stride=stride, pad=pad,
+                                          untie_biases=untie_biases, W=W, b=b,
+                                          nonlinearity=nonlinearity, n=1,
+                                          **kwargs)
+        self.convolution = convolution
+
+    def convolve(self, input, **kwargs):
+        stride, = self.stride
+        conved = self.convolution(input, self.W, stride=stride,
+                                  padding=self.pad)
         return conved
 
 
@@ -1789,7 +1813,12 @@ def get_output(layer_or_layers, inputs=None, **kwargs):
                                  "layer %r. Please call it with a dictionary "
                                  "mapping this layer to an input expression."
                                  % layer)
-            all_outputs[layer] = layer.get_output_for(layer_inputs, **kwargs)
+            scope_name = layer.__class__.__name__
+            if getattr(layer, 'name', None) is not None:
+                scope_name += '_' + layer.name
+            with tf.variable_scope(scope_name):
+                all_outputs[layer] = layer.get_output_for(layer_inputs,
+                                                          **kwargs)
             try:
                 names, _, _, defaults = getargspec(layer.get_output_for)
             except TypeError:
