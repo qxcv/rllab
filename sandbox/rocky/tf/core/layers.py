@@ -472,7 +472,7 @@ class BaseConvLayer(Layer):
         return ((batchsize,) +
                 tuple(conv_output_length(input, filter, stride, p)
                       for input, filter, stride, p
-                      in zip(input_shape[1:3], self.filter_size,
+                      in zip(input_shape[1:], self.filter_size,
                              self.stride, pad))) + (self.num_filters,)
 
     def get_output_for(self, input, **kwargs):
@@ -481,10 +481,10 @@ class BaseConvLayer(Layer):
         if self.b is None:
             activation = conved
         elif self.untie_biases:
-            # raise NotImplementedError
             activation = conved + tf.expand_dims(self.b, 0)
         else:
-            activation = conved + tf.reshape(self.b, (1, 1, 1, self.num_filters))
+            bc_shape = (1,) * (self.n+1) + (self.num_filters,)
+            activation = conved + tf.reshape(self.b, bc_shape)
 
         return self.nonlinearity(activation)
 
