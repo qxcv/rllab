@@ -45,10 +45,12 @@ class CategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
 
             self._l_prob = prob_network.output_layer
             self._l_obs = prob_network.input_layer
+            # TODO: add merged TF summary op. I can remove output in
+            # get_action, dist_info, etc. (maybe?)
             self._f_prob = tensor_utils.compile_function(
                 [prob_network.input_layer.input_var],
-                L.get_output(prob_network.output_layer)
-            )
+                L.get_output(prob_network.output_layer,
+                             summary_collections=['summaries_f_prob']))
 
             self._dist = Categorical(env_spec.action_space.n)
 
@@ -60,8 +62,11 @@ class CategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
         return True
 
     @overrides
-    def dist_info_sym(self, obs_var, state_info_vars=None):
-        return dict(prob=L.get_output(self._l_prob, {self._l_obs: tf.cast(obs_var, tf.float32)}))
+    def dist_info_sym(self, obs_var, state_info_vars=None,
+                      summary_collections=['dist_info_sym']):
+        return dict(prob=L.get_output(self._l_prob,
+                                      {self._l_obs: tf.cast(obs_var, tf.float32)},
+                                      summary_collections=summary_collections))
 
     @overrides
     def dist_info(self, obs, state_infos=None):

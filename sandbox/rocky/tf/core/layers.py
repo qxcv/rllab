@@ -30,10 +30,12 @@ def create_param(spec, shape, name, trainable=True, regularizable=True):
     else:
         # do not regularize this variable
         regularizer = lambda _: tf.constant(0.)
-    return tf.get_variable(
+    rv = tf.get_variable(
         name=name, shape=shape, initializer=spec, trainable=trainable,
         regularizer=regularizer, dtype=tf.float32
     )
+    tf.summary.histogram('weights/' + name, rv, ['weights'])
+    return rv
 
 
 def as_tuple(x, N, t=None):
@@ -1774,7 +1776,8 @@ class ElemwiseSumLayer(MergeLayer):
         return input_shapes[0]
 
 
-def get_output(layer_or_layers, inputs=None, **kwargs):
+def get_output(layer_or_layers, inputs=None, summary_collections=None,
+               **kwargs):
     # track accepted kwargs used by get_output_for
     accepted_kwargs = {'deterministic'}
     # obtain topological ordering of all layers the output layer(s) depend on
@@ -1815,10 +1818,12 @@ def get_output(layer_or_layers, inputs=None, **kwargs):
                                  % layer)
             scope_name = layer.__class__.__name__
             if getattr(layer, 'name', None) is not None:
-                scope_name += '_' + layer.name
+                scope_name = layer.name + '/' + scope_name
             with tf.variable_scope(scope_name):
-                all_outputs[layer] = layer.get_output_for(layer_inputs,
-                                                          **kwargs)
+                output = layer.get_output_for(layer_inputs, **kwargs)
+                all_outputs[layer] = output
+                tf.summary.histogram('activations', output,
+                                     collections=summary_collections)
             try:
                 names, _, _, defaults = getargspec(layer.get_output_for)
             except TypeError:

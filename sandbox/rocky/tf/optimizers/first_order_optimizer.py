@@ -56,7 +56,7 @@ class FirstOrderOptimizer(Serializable):
         self._input_vars = None
         self._train_op = None
 
-    def update_opt(self, loss, target, inputs, extra_inputs=None, **kwargs):
+    def update_opt(self, loss, target, inputs, extra_inputs=None, summary_writer=None, **kwargs):
         """
         :param loss: Symbolic expression for the loss function.
         :param target: A parameterized object to optimize over. It should implement methods of the
@@ -68,7 +68,24 @@ class FirstOrderOptimizer(Serializable):
 
         self._target = target
 
-        self._train_op = self._tf_optimizer.minimize(loss, var_list=target.get_params(trainable=True))
+        # I replaced the next line with the ones which follow so that I could
+        # give gradients to Tensorboard
+        # self._train_op = self._tf_optimizer.minimize(loss, var_list=target.get_params(trainable=True))
+        params = target.get_params(trainable=True)
+        grads_and_vars = self._tf_optimizer.compute_gradients(
+            loss, var_list=params)
+        self._train_op = self._tf_optimizer.apply_gradients(
+            grads_and_vars=grads_and_vars)
+        for g, v in grads_and_vars:
+            tf.summary.histogram(
+                'weight_grads/' + v.name, g, collections=['dist_info_sym'])
+
+        # TODO: need to get a better binding between name and network here
+        # add weights as well
+        weight_op = tf.summary.merge_all('weights')
+        tf.summary.merge([weight_op], collections=['dist_info_sym'])
+        self._summary_op = tf.summary.merge_all('dist_info_sym')
+        self._summary_writer = summary_writer
 
         # updates = OrderedDict([(k, v.astype(k.dtype)) for k, v in updates.iteritems()])
 
@@ -108,8 +125,13 @@ class FirstOrderOptimizer(Serializable):
                 logger.log("Epoch %d" % (epoch))
                 progbar = pyprind.ProgBar(len(inputs[0]))
 
-            for batch in dataset.iterate(update=True):
-                sess.run(self._train_op, dict(list(zip(self._input_vars, batch))))
+            for batch_idx, batch in enumerate(dataset.iterate(update=True)):
+                feed_dict = dict(list(zip(self._input_vars, batch)))
+                if self._summary_op is not None and (batch_idx % 10) == 0:
+                    _, summary = sess.run([self._train_op, self._summary_op], feed_dict)
+                    self._summary_writer.add_summary(summary)
+                else:
+                    sess.run(self._train_op, feed_dict)
                 if self._verbose:
                     progbar.update(len(batch[0]))
 

@@ -1,4 +1,5 @@
 import time
+import numpy as np
 from rllab.algos.base import RLAlgorithm
 import rllab.misc.logger as logger
 import rllab.plotter as plotter
@@ -14,30 +15,29 @@ class BatchPolopt(RLAlgorithm):
     This includes various policy gradient methods like vpg, npg, ppo, trpo, etc.
     """
 
-    def __init__(
-            self,
-            env,
-            policy,
-            baseline,
-            scope=None,
-            n_itr=500,
-            start_itr=0,
-            batch_size=5000,
-            max_path_length=500,
-            discount=0.99,
-            gae_lambda=1,
-            plot=False,
-            pause_for_plot=False,
-            center_adv=True,
-            positive_adv=False,
-            store_paths=False,
-            whole_paths=True,
-            fixed_horizon=False,
-            sampler_cls=None,
-            sampler_args=None,
-            force_batch_sampler=False,
-            **kwargs
-    ):
+    def __init__(self,
+                 env,
+                 policy,
+                 baseline,
+                 scope=None,
+                 n_itr=500,
+                 start_itr=0,
+                 batch_size=5000,
+                 max_path_length=500,
+                 discount=0.99,
+                 gae_lambda=1,
+                 plot=False,
+                 pause_for_plot=False,
+                 center_adv=True,
+                 positive_adv=False,
+                 store_paths=False,
+                 whole_paths=True,
+                 fixed_horizon=False,
+                 sampler_cls=None,
+                 sampler_args=None,
+                 summary_writer=None,
+                 force_batch_sampler=False,
+                 **kwargs):
         """
         :param env: Environment
         :param policy: Policy
@@ -76,6 +76,8 @@ class BatchPolopt(RLAlgorithm):
         self.store_paths = store_paths
         self.whole_paths = whole_paths
         self.fixed_horizon = fixed_horizon
+        self.summary_writer = summary_writer
+        self._log_ops = {}
         if sampler_cls is None:
             if self.policy.vectorized and not force_batch_sampler:
                 sampler_cls = VectorizedSampler
@@ -100,12 +102,12 @@ class BatchPolopt(RLAlgorithm):
     def process_samples(self, itr, paths):
         return self.sampler.process_samples(itr, paths)
 
-    def train(self, sess=None):
+    def train(self, sess=None, async=False):
         created_session = True if (sess is None) else False
         if sess is None:
             sess = tf.Session()
             sess.__enter__()
-            
+
         sess.run(tf.global_variables_initializer())
         self.start_worker()
         start_time = time.time()
@@ -121,9 +123,11 @@ class BatchPolopt(RLAlgorithm):
                 logger.log("Optimizing policy...")
                 self.optimize_policy(itr, samples_data)
                 logger.log("Saving snapshot...")
-                params = self.get_itr_snapshot(itr, samples_data)  # , **kwargs)
+                params = self.get_itr_snapshot(itr,
+                                               samples_data)  # , **kwargs)
                 if self.store_paths:
                     params["paths"] = samples_data["paths"]
+                self.log_path_stats(paths)
                 logger.save_itr_params(itr, params)
                 logger.log("Saved")
                 logger.record_tabular('Time', time.time() - start_time)
@@ -134,9 +138,43 @@ class BatchPolopt(RLAlgorithm):
                     if self.pause_for_plot:
                         input("Plotting evaluation run: Press Enter to "
                               "continue...")
+                if async:
+                    should_stop = yield itr, params
+                    if should_stop:
+                        break
         self.shutdown_worker()
         if created_session:
             sess.close()
+
+    def _get_log_op(self, name):
+        collection = 'returns'
+        if name not in self._log_ops:
+            # shape=() means "scalar"; (1,) doesn't work for scalars because TF
+            # won't upcast
+            new_placeholder = tf.placeholder(
+                tf.float32, shape=(), name=name + '_in')
+            new_summary = tf.summary.scalar(
+                name, new_placeholder, collections=[collection])
+            # insert into dictionary so we don't have to recreate
+            self._log_ops[name] = (new_summary, new_placeholder)
+        summary_op, placeholder = self._log_ops[name]
+        return summary_op, placeholder
+
+    def _log_op_value(self, name, value):
+        summary_op, placeholder = self._get_log_op(name)
+        sess = tf.get_default_session()
+        result = sess.run(summary_op, {placeholder: value})
+        self.summary_writer.add_summary(result)
+
+    def log_path_stats(self, paths):
+        average_discounted_return = \
+            np.mean([path["returns"][0] for path in paths])
+        average_undiscounted_return = np.mean(
+            [sum(path["rewards"]) for path in paths])
+        self._log_op_value('average-discounted-return',
+                           average_discounted_return)
+        self._log_op_value('average-undiscounted-return',
+                           average_undiscounted_return)
 
     def log_diagnostics(self, paths):
         self.env.log_diagnostics(paths)
