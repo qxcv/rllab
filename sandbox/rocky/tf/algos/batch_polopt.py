@@ -127,7 +127,7 @@ class BatchPolopt(RLAlgorithm):
                                                samples_data)  # , **kwargs)
                 if self.store_paths:
                     params["paths"] = samples_data["paths"]
-                self.log_path_stats(paths)
+                self.log_path_stats(paths, samples_data)
                 logger.save_itr_params(itr, params)
                 logger.log("Saved")
                 logger.record_tabular('Time', time.time() - start_time)
@@ -166,7 +166,7 @@ class BatchPolopt(RLAlgorithm):
         result = sess.run(summary_op, {placeholder: value})
         self.summary_writer.add_summary(result)
 
-    def log_path_stats(self, paths):
+    def log_path_stats(self, paths, samples_data):
         average_discounted_return = \
             np.mean([path["returns"][0] for path in paths])
         average_undiscounted_return = np.mean(
@@ -175,6 +175,12 @@ class BatchPolopt(RLAlgorithm):
                            average_discounted_return)
         self._log_op_value('average-undiscounted-return',
                            average_undiscounted_return)
+        # TODO: log some stats about baseline
+        # I want to figure out whether the baseline is insane or not (as the
+        # linear baseline appears to be)
+        # baseline_explained_variance = 0
+        # self._log_op_value('baseline-explained-variance',
+        #                    baseline_explained_variance)
 
     def log_diagnostics(self, paths):
         self.env.log_diagnostics(paths)
