@@ -132,6 +132,7 @@ class BatchPolopt(RLAlgorithm):
                 logger.log("Saved")
                 logger.record_tabular('Time', time.time() - start_time)
                 logger.record_tabular('ItrTime', time.time() - itr_start_time)
+                log_dict = logger.get_tabular_log_dict()
                 logger.dump_tabular(with_prefix=False)
                 if self.plot:
                     self.update_plot()
@@ -139,7 +140,7 @@ class BatchPolopt(RLAlgorithm):
                         input("Plotting evaluation run: Press Enter to "
                               "continue...")
                 if async:
-                    should_stop = yield itr, params
+                    should_stop = yield itr, params, log_dict
                     if should_stop:
                         break
         self.shutdown_worker()

@@ -110,6 +110,10 @@ def get_log_tabular_only():
     return _log_tabular_only
 
 
+def get_tabular_log_dict():
+    return dict(_tabular)
+
+
 def log(s, with_prefix=True, with_timestamp=True, color=None):
     out = s
     if with_prefix:
