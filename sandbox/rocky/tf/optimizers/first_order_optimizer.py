@@ -79,6 +79,12 @@ class FirstOrderOptimizer(Serializable):
         for g, v in grads_and_vars:
             tf.summary.histogram(
                 'weight_grads/' + v.name, g, collections=['dist_info_sym'])
+            for slot in self._tf_optimizer.get_slot_names():
+                slot_var = self._tf_optimizer.get_slot(v, slot)
+                if slot_var is not None:
+                    dest_name = 'slots-' + slot + '/' + v.name
+                    tf.summary.histogram(
+                        dest_name, slot_var, collections=['dist_info_sym'])
 
         # TODO: need to get a better binding between name and network here
         # add weights as well

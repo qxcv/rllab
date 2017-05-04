@@ -133,5 +133,6 @@ class VPG(BatchPolopt, Serializable):
             itr=itr,
             policy=self.policy,
             baseline=self.baseline,
-            env=self.env,
+            # leaving this out because it is hard to serialise
+            # env=self.env,
         )
