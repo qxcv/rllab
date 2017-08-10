@@ -55,6 +55,9 @@ class FirstOrderOptimizer(Serializable):
         self._verbose = verbose
         self._input_vars = None
         self._train_op = None
+        # hack to figure out whether optimize() has been called before (ugh,
+        # need something better)
+        self._num_opt_calls = 0
 
     def update_opt(self, loss, target, inputs, extra_inputs=None, summary_writer=None, **kwargs):
         """
@@ -133,9 +136,11 @@ class FirstOrderOptimizer(Serializable):
 
             for batch_idx, batch in enumerate(dataset.iterate(update=True)):
                 feed_dict = dict(list(zip(self._input_vars, batch)))
-                if self._summary_op is not None and (batch_idx % 10) == 0:
-                    _, summary = sess.run([self._train_op, self._summary_op], feed_dict)
-                    self._summary_writer.add_summary(summary)
+                if self._summary_op is not None:
+                    do_summary = (batch_idx % 10) == 0
+                    if do_summary:
+                        _, summary = sess.run([self._train_op, self._summary_op], feed_dict)
+                        self._summary_writer.add_summary(summary)
                 else:
                     sess.run(self._train_op, feed_dict)
                 if self._verbose:
@@ -165,3 +170,5 @@ class FirstOrderOptimizer(Serializable):
             if abs(last_loss - new_loss) < self._tolerance:
                 break
             last_loss = new_loss
+
+        self._num_opt_calls += 1

@@ -18,7 +18,7 @@ class CategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             env_spec,
             hidden_sizes=(32, 32),
             hidden_nonlinearity=tf.nn.tanh,
-            prob_network=None,
+            prob_network=None
     ):
         """
         :param env_spec: A spec for the mdp.
@@ -54,6 +54,11 @@ class CategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
 
             self._dist = Categorical(env_spec.action_space.n)
 
+            # this may be changed later, after network is created so that the
+            # network actually shows up in TB
+            self.summary_writer = None
+            self._ncalls = 0
+
             super(CategoricalMLPPolicy, self).__init__(env_spec)
             LayersPowered.__init__(self, [prob_network.output_layer])
 
@@ -78,14 +83,28 @@ class CategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
     # the current policy
     @overrides
     def get_action(self, observation):
+        self._ncalls += 1
         flat_obs = self.observation_space.flatten(observation)
         prob = self._f_prob([flat_obs])[0]
         action = self.action_space.weighted_sample(prob)
         return action, dict(prob=prob)
 
     def get_actions(self, observations):
+        self._ncalls += 1
         flat_obs = self.observation_space.flatten_n(observations)
-        probs = self._f_prob(flat_obs)
+        if self.summary_writer is not None and self._ncalls == 2:
+            # write run metadata
+            run_metadata = tf.RunMetadata()
+            extra_kwargs = {
+                'options': tf.RunOptions(
+                    trace_level=tf.RunOptions.FULL_TRACE),
+                'run_metadata': run_metadata
+            }
+            probs = self._f_prob(flat_obs, **extra_kwargs)
+            self.summary_writer.add_run_metadata(run_metadata,
+                                                  'performance')
+        else:
+            probs = self._f_prob(flat_obs)
         actions = list(map(self.action_space.weighted_sample, probs))
         return actions, dict(prob=probs)
 
