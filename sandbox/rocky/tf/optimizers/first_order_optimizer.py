@@ -11,7 +11,7 @@ from collections import OrderedDict
 import tensorflow as tf
 import time
 from functools import partial
-import pyprind
+import tqdm
 
 
 class FirstOrderOptimizer(Serializable):
@@ -130,11 +130,12 @@ class FirstOrderOptimizer(Serializable):
         sess = tf.get_default_session()
 
         for epoch in range(self._max_epochs):
+            batch_iter = enumerate(dataset.iterate(update=True))
             if self._verbose:
                 logger.log("Epoch %d" % (epoch))
-                progbar = pyprind.ProgBar(len(inputs[0]))
+                batch_iter = tqdm(batch_iter)
 
-            for batch_idx, batch in enumerate(dataset.iterate(update=True)):
+            for batch_idx, batch in batch_iter:
                 feed_dict = dict(list(zip(self._input_vars, batch)))
                 if self._summary_op is not None:
                     do_summary = (batch_idx % 10) == 0
@@ -143,12 +144,6 @@ class FirstOrderOptimizer(Serializable):
                         self._summary_writer.add_summary(summary)
                 else:
                     sess.run(self._train_op, feed_dict)
-                if self._verbose:
-                    progbar.update(len(batch[0]))
-
-            if self._verbose:
-                if progbar.active:
-                    progbar.stop()
 
             new_loss = f_loss(*(tuple(inputs) + extra_inputs))
 

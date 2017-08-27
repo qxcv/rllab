@@ -3,7 +3,7 @@
 from joblib.pool import MemmapingPool
 import multiprocessing as mp
 from rllab.misc import logger
-import pyprind
+import tqdm
 import time
 import traceback
 import sys
@@ -16,7 +16,7 @@ class ProgBarCounter(object):
         self.cur_progress = 0
         self.cur_count = 0
         if not logger.get_log_tabular_only():
-            self.pbar = pyprind.ProgBar(self.max_progress)
+            self.pbar = tqdm.trange(self.max_progress)
         else:
             self.pbar = None
 
@@ -29,8 +29,8 @@ class ProgBarCounter(object):
             self.cur_progress = new_progress
 
     def stop(self):
-        if self.pbar is not None and self.pbar.active:
-            self.pbar.stop()
+        if self.pbar is not None:
+            self.pbar.close()
 
 
 class SharedGlobal(object):

@@ -7,7 +7,7 @@ from collections import OrderedDict
 import time
 import lasagne.updates
 import theano
-import pyprind
+import tqdm
 from functools import partial
 
 
@@ -104,7 +104,7 @@ class FirstOrderOptimizer(Serializable):
         )
 
         itr = 0
-        for epoch in pyprind.prog_bar(list(range(self._max_epochs))):
+        for epoch in tqdm.tqdm(list(range(self._max_epochs))):
             for batch in dataset.iterate(update=True):
                 f_opt(*batch)
                 if yield_itr is not None and (itr % (yield_itr+1)) == 0:

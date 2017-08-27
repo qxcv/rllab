@@ -9,7 +9,7 @@ import rllab.misc.logger as logger
 import theano.tensor as TT
 import pickle as pickle
 import numpy as np
-import pyprind
+import tqdm
 import lasagne
 
 
@@ -212,7 +212,7 @@ class DDPG(RLAlgorithm):
         for epoch in range(self.n_epochs):
             logger.push_prefix('epoch #%d | ' % epoch)
             logger.log("Training started")
-            for epoch_itr in pyprind.prog_bar(range(self.epoch_length)):
+            for epoch_itr in tqdm.trange(self.epoch_length):
                 # Execute policy
                 if terminal:  # or path_length > self.max_path_length:
                     # Note that if the last time step ends an episode, the very
