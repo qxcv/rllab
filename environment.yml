@@ -7,8 +7,8 @@ channels:
     - jjhelmus
     - soumith
 dependencies:
-    - python==3.5.2
-    - numpy==1.12.0
+    - python>=3.5
+    - numpy
     - scipy
     - path.py
     - python-dateutil
@@ -54,11 +54,12 @@ dependencies:
         - git+https://github.com/neocxi/prettytensor.git
         - jupyter
         - progressbar2
-        - chainer==1.18.0
-        - https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.0.1-cp35-cp35m-linux_x86_64.whl; 'linux' in sys_platform
-        - https://storage.googleapis.com/tensorflow/mac/gpu/tensorflow_gpu-1.0.1-py3-none-any.whl; sys_platform == 'darwin'
-        - numpy-stl==2.2.0
-        - nibabel==2.1.0
-        - pylru==1.0.9
+        - chainer>=1.18,<2.0
+        # - https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.0.1-cp35-cp35m-linux_x86_64.whl; 'linux' in sys_platform
+        # - https://storage.googleapis.com/tensorflow/mac/gpu/tensorflow_gpu-1.0.1-py3-none-any.whl; sys_platform == 'darwin'
+        - tensorflow-gpu>=1.0,<=1.3
+        - numpy-stl
+        - nibabel
+        - pylru
         - hyperopt
         - polling
