@@ -1,6 +1,10 @@
 
 
-from joblib.pool import MemmapingPool
+try:
+    from joblib.pool import MemmappingPool
+except ImportError:
+    # older versions of joblib have a spleling bug
+    from joblib.pool import MemmapingPool as MemmappingPool
 import multiprocessing as mp
 from rllab.misc import logger
 import pyprind
@@ -56,7 +60,7 @@ class StatefulPool(object):
         if n_parallel > 1:
             self.queue = mp.Queue()
             self.worker_queue = mp.Queue()
-            self.pool = MemmapingPool(
+            self.pool = MemmappingPool(
                 self.n_parallel,
                 temp_folder="/tmp",
             )
