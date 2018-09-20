@@ -18,23 +18,18 @@ def rollout(env,
             speedup=1,
             always_return_paths=False,
             animated_save_path=None):
-    print('doing a thing')
     observations = []
     actions = []
     rewards = []
     agent_infos = []
     env_infos = []
-    print('resetting the environment')
     o = env.reset()
     agent.reset()
     path_length = 0
     if animated:
-        print('rendering thing')
         if animated_save_path is None:
-            print('DOING IT THE DUMB WAY')
             env.render()
         else:
-            print('doing it the smart way')
             from skvideo.io import FFmpegWriter
             inner_env = get_inner_env(env)
             vid_writer = FFmpegWriter(animated_save_path)
