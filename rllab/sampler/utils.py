@@ -1,3 +1,4 @@
+import inspect
 import numpy as np
 from rllab.misc import tensor_utils
 import time
@@ -11,13 +12,26 @@ def get_inner_env(env):
     return env
 
 
+def has_det_kwarg(function):
+    """Check that an action-taking method has a 'det' kwarg. This is the
+    duck-type-y way of figuring out whether we can do deterministic sampling
+    :)"""
+    aspec = inspect.getfullargspec(function)
+    num_kwargs = len(aspec.defaults)
+    return len(aspec.args) > 2 \
+        and num_kwargs > 0 \
+        and 'det' in aspec.args[-num_kwargs:]
+
+
 def rollout(env,
             agent,
             max_path_length=np.inf,
             animated=False,
             speedup=1,
             always_return_paths=False,
-            animated_save_path=None):
+            animated_save_path=None,
+            # set this to True(ish) to do deterministic action selection
+            det=None):
     observations = []
     actions = []
     rewards = []
@@ -25,6 +39,17 @@ def rollout(env,
     env_infos = []
     o = env.reset()
     agent.reset()
+
+    if det is not None:
+        assert has_det_kwarg(agent.get_action), \
+            "%r.get_action does not support det= kwarg; can't do " \
+            "deterministic sampling" % (agent, )
+
+    def get_action(o):
+        if det is not None:
+            return agent.get_action(o, det=det)
+        return agent.get_action(o)
+
     path_length = 0
     if animated:
         if animated_save_path is None:
@@ -37,7 +62,7 @@ def rollout(env,
             vid_writer.writeFrame(frame)
     try:
         while path_length < max_path_length:
-            a, agent_info = agent.get_action(o)
+            a, agent_info = get_action(o)
             next_o, r, d, env_info = env.step(a)
             observations.append(env.observation_space.flatten(o))
             rewards.append(r)
