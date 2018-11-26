@@ -202,9 +202,11 @@ class InputLayer(Layer):
         if input_var is None:
             if self.name is not None:
                 with tf.variable_scope(self.name):
-                    input_var = tf.placeholder(tf.float32, shape=shape, name="input")
+                    input_var = tf.placeholder(
+                        tf.float32, shape=shape, name="input")
             else:
-                input_var = tf.placeholder(tf.float32, shape=shape, name="input")
+                input_var = tf.placeholder(
+                    tf.float32, shape=shape, name="input")
         self.input_var = input_var
 
     @Layer.output_shape.getter
