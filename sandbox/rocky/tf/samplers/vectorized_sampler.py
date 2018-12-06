@@ -9,6 +9,7 @@ import numpy as np
 from rllab.sampler.stateful_pool import ProgBarCounter
 import rllab.misc.logger as logger
 import itertools
+import multiprocessing
 
 
 class VectorizedSampler(BaseSampler):
@@ -21,7 +22,12 @@ class VectorizedSampler(BaseSampler):
         n_envs = self.n_envs
         if n_envs is None:
             n_envs = int(self.algo.batch_size / self.algo.max_path_length)
-            n_envs = max(1, min(n_envs, 100))
+            # XXX WTF WAS THIS DOING BEFORE?!
+            # Why on earth should number of environments depend on anything
+            # EXCEPT batch size? Why is this cause OOM TF errors if it's too
+            # high?
+            # n_envs = max(1, min(n_envs, 100))
+            n_envs = max(1, min(n_envs, multiprocessing.cpu_count()))
 
         if getattr(self.algo.env, 'vectorized', False):
             self.vec_env = self.algo.env.vec_env_executor(n_envs=n_envs, max_path_length=self.algo.max_path_length)
@@ -54,6 +60,7 @@ class VectorizedSampler(BaseSampler):
         while n_samples < self.algo.batch_size:
             t = time.time()
             policy.reset(dones)
+            # print('Running get_action on obses: %r' % (len(obses),))
             actions, agent_infos = policy.get_actions(obses)
 
             policy_time += time.time() - t
@@ -104,5 +111,6 @@ class VectorizedSampler(BaseSampler):
         logger.record_tabular("PolicyExecTime", policy_time)
         logger.record_tabular("EnvExecTime", env_time)
         logger.record_tabular("ProcessExecTime", process_time)
+        logger.record_tabular("EnvNSamples", n_samples)
 
         return paths
