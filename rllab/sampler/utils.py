@@ -50,6 +50,10 @@ def rollout(env,
             return agent.get_action(o, det=det)
         return agent.get_action(o)
 
+    # I don't think Gym envs have these attributes, but RLLab envs do
+    has_flatten_o = hasattr(env.observation_space, 'flatten')
+    has_flatten_a = hasattr(env.action_space, 'flatten')
+
     path_length = 0
     if animated:
         if animated_save_path is None:
@@ -64,9 +68,15 @@ def rollout(env,
         while path_length < max_path_length:
             a, agent_info = get_action(o)
             next_o, r, d, env_info = env.step(a)
-            observations.append(env.observation_space.flatten(o))
+            flat_o = o
+            if has_flatten_o:
+                flat_o = env.observation_space.flatten(o)
+            observations.append(flat_o)
             rewards.append(r)
-            actions.append(env.action_space.flatten(a))
+            flat_a = a
+            if has_flatten_a:
+                flat_a = env.action_space.flatten(a)
+            actions.append(flat_a)
             agent_infos.append(agent_info)
             env_infos.append(env_info)
             path_length += 1
