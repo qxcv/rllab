@@ -39,6 +39,9 @@ class VectorizedSampler(BaseSampler):
             )
         self.env_spec = self.algo.env.spec
 
+    def map_envs(self, map_fn):
+        return self.vec_env.map_envs(map_fn)
+
     def shutdown_worker(self):
         self.vec_env.terminate()
 

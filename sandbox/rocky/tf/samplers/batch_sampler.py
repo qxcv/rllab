@@ -24,6 +24,9 @@ class BatchSampler(BaseSampler):
     def shutdown_worker(self):
         parallel_sampler.terminate_task(scope=self.algo.scope)
 
+    def map_envs(self, map_fn):
+        return parallel_sampler.map_task(map_fn)
+
     def obtain_samples(self, itr):
         cur_policy_params = self.algo.policy.get_param_values()
         cur_env_params = self.algo.env.get_param_values()
@@ -37,5 +40,6 @@ class BatchSampler(BaseSampler):
         if self.algo.whole_paths:
             return paths
         else:
-            paths_truncated = parallel_sampler.truncate_paths(paths, self.algo.batch_size)
+            paths_truncated = parallel_sampler.truncate_paths(
+                paths, self.algo.batch_size)
             return paths_truncated
