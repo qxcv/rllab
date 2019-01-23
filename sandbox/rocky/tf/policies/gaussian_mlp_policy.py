@@ -30,6 +30,7 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             hidden_nonlinearity=tf.nn.tanh,
             output_nonlinearity=None,
             mean_network=None,
+            mean_network_kwargs=None,
             std_network=None,
             std_parametrization='exp'
     ):
@@ -69,7 +70,10 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
                     hidden_sizes=hidden_sizes,
                     hidden_nonlinearity=hidden_nonlinearity,
                     output_nonlinearity=output_nonlinearity,
+                    **(mean_network_kwargs or {}),
                 )
+            else:
+                assert not mean_network_kwargs
             self._mean_network = mean_network
 
             l_mean = mean_network.output_layer
