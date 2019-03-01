@@ -30,9 +30,9 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
             hidden_nonlinearity=tf.nn.tanh,
             output_nonlinearity=None,
             mean_network=None,
-            mean_network_kwargs=None,
             std_network=None,
             std_parametrization='exp'
+            mean_network_kwargs=None,
     ):
         """
         :param env_spec:
